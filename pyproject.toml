@@ -1,0 +1,39 @@
+[project]
+name = "incident-system"
+version = "0.7.3"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+    "sqlalchemy>=2.0",
+    "psycopg[binary]>=3.1",
+    "httpx>=0.27",
+    "pydantic>=2.6",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-timeout>=2.2",
+    "ruff>=0.4",
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "concurrency: pruebas de concurrencia (requieren Postgres)",
+    "smoke: pruebas contra un ambiente desplegado",
+    "real_infra: pega a infraestructura real, NO correr en CI",
+]
+timeout = 60
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+# B008: patron estandar de FastAPI (Depends en defaults)
+ignore = ["B008"]
+
+[tool.ruff.lint.per-file-ignores]
+# el test de API fija DATABASE_URL antes de importar la app
+"tests/unit/test_api.py" = ["E402"]

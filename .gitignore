@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.db
+.env
+.terraform/
+*.tfstate*
+*.tfplan
+.pytest_cache/
+.ruff_cache/
+CLAUDE.local.md
