@@ -14,5 +14,6 @@ ENV PYTHONPATH=/srv/incident-system
 
 EXPOSE 8000
 
-# api por defecto; el worker usa el mismo artefacto con otro comando
-CMD ["uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# api por defecto; el worker usa el mismo artefacto con otro comando.
+# PORT lo inyecta el runtime (Cloud Run usa 8080); default 8000 en local.
+CMD exec uvicorn app.api.main:app --host 0.0.0.0 --port ${PORT:-8000}
