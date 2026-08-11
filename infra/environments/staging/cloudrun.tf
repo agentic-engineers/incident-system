@@ -7,15 +7,6 @@ variable "api_image" {
   default = "us-docker.pkg.dev/cloudrun/container/hello"
 }
 
-variable "database_url" {
-  description = "URL de la base de datos del ambiente"
-  type        = string
-  # DECISION PENDIENTE (spike): Postgres de staging.
-  # Mientras: sqlite efimero (suficiente para el smoke del thin slice).
-  default   = "sqlite:////tmp/staging.db"
-  sensitive = true
-}
-
 resource "google_cloud_run_v2_service" "api" {
   name     = "incident-api"
   location = var.region
@@ -29,12 +20,27 @@ resource "google_cloud_run_v2_service" "api" {
     containers {
       image = var.api_image
       env {
-        name  = "DATABASE_URL"
-        value = var.database_url
+        name = "DATABASE_URL"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.database_url_staging.secret_id
+            version = "latest"
+          }
+        }
       }
       env {
         name  = "APP_VERSION"
         value = var.env
+      }
+      volume_mounts {
+        name       = "cloudsql"
+        mount_path = "/cloudsql"
+      }
+    }
+    volumes {
+      name = "cloudsql"
+      cloud_sql_instance {
+        instances = [google_sql_database_instance.postgres.connection_name]
       }
     }
   }
@@ -45,6 +51,14 @@ resource "google_cloud_run_v2_service" "api" {
     # Terraform es dueño de la FORMA del servicio (identidad, escala, env).
     ignore_changes = [template[0].containers[0].image]
   }
+
+  depends_on = [
+    # La VERSION del secreto (no solo el secreto): Cloud Run valida que
+    # "versions/latest" exista al desplegar. Sin esto, carrera en el primer apply.
+    google_secret_manager_secret_version.database_url_staging,
+    google_secret_manager_secret_iam_member.guardia_reads_dburl_staging,
+    google_project_iam_member.guardia_cloudsql_client,
+  ]
 }
 
 # Lab: la API de staging es invocable sin auth (recursos desechables, sin datos reales)
