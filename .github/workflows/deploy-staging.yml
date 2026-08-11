@@ -1,0 +1,79 @@
+name: deploy-staging
+
+# Cada push a main produce UN artefacto inmutable (identificado por digest)
+# y lo despliega a staging. La promocion a production usa ESE MISMO digest.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "runbooks/**"
+      - "README.md"
+
+# La identidad se pide por OIDC (WIF): cero llaves JSON en secrets.
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+env:
+  REGION: us-east1
+  IMAGE: us-east1-docker.pkg.dev/curso-cc-lab-2026/incident-system/incident-api
+  SERVICE: incident-api
+  WIF_PROVIDER: projects/884439257759/locations/global/workloadIdentityPools/github-pool/providers/github-oidc
+  DEPLOYER_SA: github-deployer@curso-cc-lab-2026.iam.gserviceaccount.com
+
+jobs:
+  build-deploy-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.DEPLOYER_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configurar docker para Artifact Registry
+        run: gcloud auth configure-docker us-east1-docker.pkg.dev --quiet
+
+      - name: Build (el commit viaja DENTRO del artefacto)
+        run: |
+          docker build -f deploy/Dockerfile \
+            --build-arg GIT_SHA="${GITHUB_SHA::7}" \
+            -t "$IMAGE:${GITHUB_SHA::7}" .
+
+      - name: Push y captura del digest (la huella inmutable)
+        id: digest
+        run: |
+          docker push "$IMAGE:${GITHUB_SHA::7}"
+          DIGEST=$(gcloud artifacts docker images describe \
+            "$IMAGE:${GITHUB_SHA::7}" --format='value(image_summary.digest)')
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          echo "**Artefacto:** \`$IMAGE@$DIGEST\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Deploy a staging POR DIGEST (jamas por tag)
+        run: |
+          gcloud run services update "$SERVICE" \
+            --region "$REGION" \
+            --image "$IMAGE@${{ steps.digest.outputs.digest }}" \
+            --quiet
+
+      - name: Smoke (health + trazabilidad build→runtime)
+        run: |
+          URL=$(gcloud run services describe "$SERVICE" --region "$REGION" \
+            --format='value(status.url)')
+          curl -fsS "$URL/health" | grep -q '"ok"'
+          DEPLOYED=$(curl -fsS "$URL/version" \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["commit"])')
+          if [ "$DEPLOYED" != "${GITHUB_SHA::7}" ]; then
+            echo "::error::el runtime corre $DEPLOYED, esperaba ${GITHUB_SHA::7}"
+            exit 1
+          fi
+          echo "**Staging verde:** $URL corre \`${GITHUB_SHA::7}\`" >> "$GITHUB_STEP_SUMMARY"

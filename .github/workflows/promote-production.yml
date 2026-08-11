@@ -1,0 +1,83 @@
+name: promote-production
+
+# Promociona a production EL MISMO digest que corre en staging.
+# No hay rebuild: si se reconstruyera, lo verificado y lo desplegado
+# serian artefactos distintos.
+#
+# El gate humano vive en el environment "production" (required reviewers):
+# este workflow queda EN PAUSA hasta que alguien aprueba.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: promote-production
+  cancel-in-progress: false
+
+env:
+  REGION: us-east1
+  SERVICE_STAGING: incident-api
+  SERVICE_PROD: incident-api-prod
+  WIF_PROVIDER: projects/884439257759/locations/global/workloadIdentityPools/github-pool/providers/github-oidc
+  DEPLOYER_SA: github-deployer@curso-cc-lab-2026.iam.gserviceaccount.com
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.DEPLOYER_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Leer el digest que corre en staging (no se reconstruye nada)
+        id: artefacto
+        run: |
+          IMAGE_REF=$(gcloud run services describe "$SERVICE_STAGING" --region "$REGION" \
+            --format='value(spec.template.spec.containers[0].image)')
+          case "$IMAGE_REF" in
+            *@sha256:*) ;;
+            *)
+              echo "::error::staging no esta desplegado por digest ($IMAGE_REF); no hay nada seguro que promocionar"
+              exit 1
+              ;;
+          esac
+          echo "image=$IMAGE_REF" >> "$GITHUB_OUTPUT"
+          echo "**Promocionando:** \`$IMAGE_REF\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Gate tecnico; solo se promociona un staging VERDE
+        id: staging
+        run: |
+          URL_STG=$(gcloud run services describe "$SERVICE_STAGING" --region "$REGION" \
+            --format='value(status.url)')
+          curl -fsS "$URL_STG/health" | grep -q '"ok"'
+          COMMIT_STG=$(curl -fsS "$URL_STG/version" \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["commit"])')
+          echo "commit=$COMMIT_STG" >> "$GITHUB_OUTPUT"
+
+      - name: Promocionar el MISMO artefacto
+        run: |
+          gcloud run services update "$SERVICE_PROD" \
+            --region "$REGION" \
+            --image "${{ steps.artefacto.outputs.image }}" \
+            --quiet
+
+      - name: Smoke de production (mismo commit que staging)
+        run: |
+          URL_PROD=$(gcloud run services describe "$SERVICE_PROD" --region "$REGION" \
+            --format='value(status.url)')
+          curl -fsS "$URL_PROD/health" | grep -q '"ok"'
+          COMMIT_PROD=$(curl -fsS "$URL_PROD/version" \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["commit"])')
+          if [ "$COMMIT_PROD" != "${{ steps.staging.outputs.commit }}" ]; then
+            echo "::error::production corre $COMMIT_PROD y staging ${{ steps.staging.outputs.commit }}"
+            exit 1
+          fi
+          echo "**Production verde:** $URL_PROD corre \`$COMMIT_PROD\` (identico a staging)" >> "$GITHUB_STEP_SUMMARY"

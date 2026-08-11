@@ -39,6 +39,12 @@ resource "google_cloud_run_v2_service" "api" {
     }
   }
   labels = var.labels
+
+  lifecycle {
+    # El pipeline es dueño del ARTEFACTO desplegado (deploy por digest).
+    # Terraform es dueño de la FORMA del servicio (identidad, escala, env).
+    ignore_changes = [template[0].containers[0].image]
+  }
 }
 
 # Lab: la API de staging es invocable sin auth (recursos desechables, sin datos reales)
