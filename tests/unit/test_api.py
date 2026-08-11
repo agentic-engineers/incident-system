@@ -34,3 +34,18 @@ def test_create_and_list_incident():
     resp = client.get("/incidents")
     assert resp.status_code == 200
     assert any(i["id"] == created["id"] for i in resp.json())
+
+
+def test_list_incidents_filtered_by_status():
+    created = client.post(
+        "/incidents",
+        json={"source": "api-test", "title": "filtro por status", "body": "detalle"},
+    ).json()
+
+    resp = client.get("/incidents", params={"status": "new"})
+    assert resp.status_code == 200
+    assert any(i["id"] == created["id"] for i in resp.json())
+
+    resp = client.get("/incidents", params={"status": "done"})
+    assert resp.status_code == 200
+    assert all(i["id"] != created["id"] for i in resp.json())

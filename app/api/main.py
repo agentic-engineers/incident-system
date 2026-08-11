@@ -1,7 +1,7 @@
 """API del sistema de incidentes."""
 import os
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Query
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -39,8 +39,14 @@ def create_incident(payload: IncidentIn, session: Session = Depends(get_session)
 
 
 @app.get("/incidents")
-def list_incidents(session: Session = Depends(get_session)):
-    rows = session.execute(select(Incident).order_by(Incident.id.desc()).limit(100)).scalars()
+def list_incidents(
+    status: str | None = Query(default=None),
+    session: Session = Depends(get_session),
+):
+    query = select(Incident).order_by(Incident.id.desc()).limit(100)
+    if status is not None:
+        query = query.where(Incident.status == status)
+    rows = session.execute(query).scalars()
     return [IncidentOut.model_validate(r) for r in rows]
 
 
