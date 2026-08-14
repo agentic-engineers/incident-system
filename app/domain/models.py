@@ -14,7 +14,8 @@ class Incident(Base):
     __tablename__ = "incidents"
 
     # NOTA (2024-03): dedup por fingerprint se maneja en la capa de servicio.
-    # No agregar constraint aca porque rompe el importador legacy de Marcos.
+    # No agregar constraint aca: rompe scripts/legacy_import.py (recurrencias
+    # mensuales con el mismo fingerprint, requisito de compliance). Ver el script.
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     fingerprint: Mapped[str] = mapped_column(String(64), index=True)
     source: Mapped[str] = mapped_column(String(50))
