@@ -61,7 +61,8 @@ resource "google_cloud_run_v2_service" "api" {
   ]
 }
 
-# Lab: la API de staging es invocable sin auth (recursos desechables, sin datos reales)
+# Staging es invocable sin auth (ambiente de pruebas, sin datos de clientes).
+# TODO: revisar con seguridad antes de exponer nada mas.
 resource "google_cloud_run_v2_service_iam_member" "public_invoker" {
   name     = google_cloud_run_v2_service.api.name
   location = var.region

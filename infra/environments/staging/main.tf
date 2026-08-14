@@ -17,7 +17,7 @@ terraform {
 }
 
 variable "project_id" {
-  description = "Proyecto GCP del laboratorio"
+  description = "Proyecto GCP del ambiente"
   type        = string
 }
 
@@ -66,7 +66,7 @@ resource "google_artifact_registry_repository" "images" {
 }
 
 # ── La VM objetivo que opera la API de guardia ────────────────────────────────
-# Es una maquina desechable y separada: la API de guardia NO controla la maquina
+# Es una maquina separada: la API de guardia NO controla la maquina
 # donde ella misma corre (regla de separacion / blast radius).
 
 resource "google_compute_instance" "web_sandbox" {

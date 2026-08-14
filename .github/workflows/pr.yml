@@ -33,7 +33,7 @@ jobs:
         run: pytest tests/unit -q
         env:
           PYTHONPATH: .
-      # NOTA: el gate de concurrencia se agrega en el caso 2 del curso
-      # (decision operativa: el test del issue #12 se vuelve obligatorio)
+      # NOTA: aun no hay gate de concurrencia aqui; el dia que exista un test
+      # que reproduzca el issue #12, se vuelve obligatorio en este workflow.
       - name: Build image
         run: docker build -f deploy/Dockerfile -t incident-system:${{ github.sha }} .

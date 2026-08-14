@@ -1,12 +1,11 @@
-# Base de datos del laboratorio — Cloud SQL (decision 11-ago-2026)
+# Base de datos — Cloud SQL
 #
-# HIBRIDO: el desarrollo (N1-N5) usa el Postgres local de docker-compose (gratis,
-# replicable, y donde vive la reproduccion determinstica del issue #12). Staging y
-# production comparten UNA instancia minima con una database cada uno (lab barato,
-# desechable). En una empresa real: instancia por ambiente.
+# El desarrollo usa el Postgres local de docker-compose. Staging y production
+# comparten UNA instancia minima con una database cada uno (decision de costos
+# de plataforma; en un mundo con budget: instancia por ambiente).
 #
-# Tiempos medidos: crear ~11 min · apagar ~1 min · prender ~10 min.
-# En reposo se APAGA (activation_policy NEVER a mano): queda solo el costo del disco.
+# Operacion: crear toma ~11 min y prender ~10 min. Fuera de horario se apaga
+# (activation_policy NEVER, a mano): queda solo el costo del disco.
 
 resource "google_sql_database_instance" "postgres" {
   name             = "incident-db"
@@ -29,7 +28,7 @@ resource "google_sql_database_instance" "postgres" {
     user_labels = var.labels
   }
 
-  deletion_protection = false # lab desechable
+  deletion_protection = false # ambiente de pruebas, sin datos de clientes
 }
 
 resource "google_sql_database" "staging" {
@@ -42,8 +41,8 @@ resource "google_sql_database" "production" {
   instance = google_sql_database_instance.postgres.name
 }
 
-# Password generada por Terraform. Queda en el state (aceptable en el lab porque el
-# state es local y el proyecto desechable; en una empresa: state remoto cifrado).
+# Password generada por Terraform. Queda en el state local.
+# TODO (plataforma): mover a state remoto cifrado; pendiente desde 2024.
 resource "random_password" "db" {
   length  = 24
   special = false

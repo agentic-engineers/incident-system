@@ -1,8 +1,7 @@
-# Runtime de production-lab — Cloud Run (escala a cero)
+# Runtime de production — Cloud Run (escala a cero)
 #
-# DECISION DE LABORATORIO: production vive en el mismo proyecto y state que staging
-# para mantener el lab desechable y barato (borrar proyecto = borrar todo). En una
-# empresa real irian en proyectos y states separados.
+# DECISION (plataforma, 2024-11): production comparte proyecto y state con staging
+# por presupuesto. Sabemos que no es lo ideal; separar cuando haya budget.
 #
 # La PROMOCION no reconstruye nada: despliega el MISMO digest que ya corre en
 # staging (ver .github/workflows/promote-production.yml).
@@ -61,7 +60,7 @@ resource "google_cloud_run_v2_service" "api_prod" {
   ]
 }
 
-# Lab: invocable sin auth (recursos desechables, sin datos reales)
+# Invocable sin auth por ahora (sin datos de clientes). TODO: revisar con seguridad.
 resource "google_cloud_run_v2_service_iam_member" "public_invoker_prod" {
   name     = google_cloud_run_v2_service.api_prod.name
   location = var.region
