@@ -38,31 +38,31 @@ class ConfirmRequest(BaseModel):
 
 
 @app.post("/incidents", response_model=IncidentOut)
-def create_incident(payload: IncidentIn, session: Session = Depends(get_session)):
+def create_incident(payload: IncidentIn, session: Session = Depends(get_session)) -> Incident:
     incident = dedup.ingest_incident(session, payload.source, payload.title, payload.body)
     return incident
 
 
 @app.get("/incidents")
-def list_incidents(session: Session = Depends(get_session)):
+def list_incidents(session: Session = Depends(get_session)) -> list[IncidentOut]:
     rows = session.execute(select(Incident).order_by(Incident.id.desc()).limit(100)).scalars()
     return [IncidentOut.model_validate(r) for r in rows]
 
 
 @app.get("/incidents/count")
-def count_incidents(session: Session = Depends(get_session)):
+def count_incidents(session: Session = Depends(get_session)) -> dict[str, int]:
     total = session.execute(select(func.count()).select_from(Incident)).scalar_one()
     return {"count": total}
 
 
 @app.get("/health")
-def health():
+def health() -> dict[str, str]:
     # TODO: esto deberia chequear la DB tambien, pero por ahora con esto basta
     return {"status": "ok"}
 
 
 @app.get("/version")
-def version():
+def version() -> dict[str, str]:
     return {
         "version": os.environ.get("APP_VERSION", "dev"),
         "commit": os.environ.get("GIT_SHA", "unknown"),
@@ -70,7 +70,7 @@ def version():
 
 
 @app.get("/infra/vm/status")
-def vm_status():
+def vm_status() -> dict[str, str]:
     try:
         status = gce_adapter.get_instance_status()
     except gce_adapter.GceError as exc:
@@ -79,7 +79,7 @@ def vm_status():
 
 
 @app.post("/infra/vm/start", status_code=202)
-def vm_start(payload: ConfirmRequest, session: Session = Depends(get_session)):
+def vm_start(payload: ConfirmRequest, session: Session = Depends(get_session)) -> dict[str, str]:
     if not payload.confirm:
         raise HTTPException(status_code=400, detail="mutacion: se requiere confirm=true")
     try:
@@ -94,7 +94,7 @@ def vm_start(payload: ConfirmRequest, session: Session = Depends(get_session)):
 
 
 @app.get("/infra/dns")
-def dns_get():
+def dns_get() -> dict[str, list[dict]]:
     try:
         records = cloudflare_dns_adapter.get_dns_records()
     except cloudflare_dns_adapter.CloudflareError as exc:
@@ -103,7 +103,9 @@ def dns_get():
 
 
 @app.post("/infra/dns/restore", status_code=202)
-def dns_restore(payload: ConfirmRequest, session: Session = Depends(get_session)):
+def dns_restore(
+    payload: ConfirmRequest, session: Session = Depends(get_session)
+) -> dict[str, list[str]]:
     if not payload.confirm:
         raise HTTPException(status_code=400, detail="mutacion: se requiere confirm=true")
     try:
