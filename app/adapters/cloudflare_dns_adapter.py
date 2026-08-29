@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import time
+from typing import TypedDict
 
 import httpx
 
@@ -16,10 +17,28 @@ log = logging.getLogger("adapter.cloudflare_dns")
 CF_API_TOKEN = os.environ.get("CF_API_TOKEN", "")
 CF_ZONE_ID = os.environ.get("CF_ZONE_ID", "")
 
+
+class DnsRecord(TypedDict):
+    """Registro tal como lo devuelve la API de Cloudflare (ya existe, tiene id)."""
+
+    id: str
+    name: str
+    type: str
+    content: str
+
+
+class DnsRecordSpec(TypedDict):
+    """Registro "conocido-bueno" de config: aun no tiene id hasta que se crea."""
+
+    name: str
+    type: str
+    content: str
+
+
 # Lista permitida de registros "conocidos-buenos": restore() solo crea o
 # actualiza registros presentes aca. Cualquier registro en Cloudflare que no
 # figure en esta lista queda intacto (no hay operacion de borrado).
-KNOWN_GOOD_RECORDS: list[dict] = json.loads(os.environ.get("CF_DNS_SNAPSHOT_JSON", "[]"))
+KNOWN_GOOD_RECORDS: list[DnsRecordSpec] = json.loads(os.environ.get("CF_DNS_SNAPSHOT_JSON", "[]"))
 
 MAX_RETRIES = 3
 _API_BASE = "https://api.cloudflare.com/client/v4"
@@ -29,11 +48,11 @@ class CloudflareError(Exception):
     """La API de Cloudflare no respondio correctamente tras los reintentos."""
 
 
-def _headers() -> dict:
+def _headers() -> dict[str, str]:
     return {"Authorization": f"Bearer {CF_API_TOKEN}"}
 
 
-def get_dns_records() -> list[dict]:
+def get_dns_records() -> list[DnsRecord]:
     url = f"{_API_BASE}/zones/{CF_ZONE_ID}/dns_records"
     attempt = 0
     last_reason = "sin intentos"
@@ -120,7 +139,7 @@ def _create_record(name: str, type_: str, content: str) -> None:
     raise CloudflareError(last_reason)
 
 
-def restore_dns_records() -> dict:
+def restore_dns_records() -> dict[str, list[str]]:
     """Corrige drift contra KNOWN_GOOD_RECORDS.
 
     Nunca borra: solo crea los registros permitidos que faltan y actualiza

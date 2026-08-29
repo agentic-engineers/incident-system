@@ -6,19 +6,20 @@ Las mutaciones (vm start, dns restore) exigen --confirm.
 import argparse
 import os
 import sys
+from typing import Any
 
 import httpx
 
 API_URL = os.environ.get("GUARDIACTL_API_URL", "http://localhost:8000")
 
 
-def _get(path: str) -> dict:
+def _get(path: str) -> dict[str, Any]:
     resp = httpx.get(f"{API_URL}{path}", timeout=10)
     resp.raise_for_status()
     return resp.json()
 
 
-def _post(path: str, payload: dict) -> dict:
+def _post(path: str, payload: dict[str, Any]) -> dict[str, Any]:
     resp = httpx.post(f"{API_URL}{path}", json=payload, timeout=10)
     resp.raise_for_status()
     return resp.json()
