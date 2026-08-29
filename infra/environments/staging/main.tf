@@ -112,12 +112,7 @@ resource "google_compute_instance_iam_member" "guardia_can_operate_sandbox" {
 
 resource "google_secret_manager_secret" "cloudflare_token" {
   secret_id = "cloudflare-api-token"
-  # TODO: alguien copio esto de otro proyecto, unificar con var.labels algun dia
-  labels = {
-    system = "incidentes"
-    env    = "stg"
-    owner  = "platform"
-  }
+  labels    = var.labels
   replication {
     auto {}
   }
