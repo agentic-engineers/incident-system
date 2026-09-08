@@ -1,7 +1,8 @@
 """API del sistema de incidentes."""
 import os
+from enum import Enum
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Query
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -13,6 +14,13 @@ from app.domain.models import Base, Incident
 app = FastAPI(title="incident-system")
 
 Base.metadata.create_all(bind=engine)
+
+
+class IncidentStatus(str, Enum):
+    new = "new"
+    processing = "processing"
+    done = "done"
+    failed = "failed"
 
 
 class IncidentIn(BaseModel):
@@ -39,8 +47,14 @@ def create_incident(payload: IncidentIn, session: Session = Depends(get_session)
 
 
 @app.get("/incidents")
-def list_incidents(session: Session = Depends(get_session)):
-    rows = session.execute(select(Incident).order_by(Incident.id.desc()).limit(100)).scalars()
+def list_incidents(
+    status: IncidentStatus | None = Query(default=None),
+    session: Session = Depends(get_session),
+):
+    query = select(Incident).order_by(Incident.id.desc()).limit(100)
+    if status is not None:
+        query = query.where(Incident.status == status.value)
+    rows = session.execute(query).scalars()
     return [IncidentOut.model_validate(r) for r in rows]
 
 
