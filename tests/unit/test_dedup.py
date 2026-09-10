@@ -35,3 +35,17 @@ def test_different_titles_are_different_incidents(session):
     a = dedup.ingest_incident(session, "monitor", "disco lleno en web-01")
     b = dedup.ingest_incident(session, "monitor", "cpu alta en web-01")
     assert a.id != b.id
+
+
+def test_ingest_reopens_done_incident(session):
+    inc = dedup.ingest_incident(session, "monitor", "disco lleno en web-01")
+    assert inc.reopened is False
+
+    inc.status = "done"
+    session.commit()
+
+    reopened = dedup.ingest_incident(session, "monitor", "disco lleno en web-01")
+
+    assert reopened.id == inc.id
+    assert reopened.status == "new"
+    assert reopened.reopened is True
