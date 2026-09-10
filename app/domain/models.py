@@ -2,7 +2,7 @@
 import datetime
 import hashlib
 
-from sqlalchemy import DateTime, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -26,6 +26,8 @@ class Incident(Base):
         DateTime, default=datetime.datetime.utcnow
     )
     processed_at: Mapped[datetime.datetime | None] = mapped_column(DateTime, nullable=True)
+    # Columna nueva nullable: True si volvio a "new" habiendo estado "done" (issue #27).
+    reopened: Mapped[bool | None] = mapped_column(Boolean, default=False, nullable=True)
 
 
 class AuditEvent(Base):

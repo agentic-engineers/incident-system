@@ -28,6 +28,7 @@ class IncidentOut(BaseModel):
     source: str
     title: str
     status: str
+    reopened: bool | None = False
 
     class Config:
         from_attributes = True

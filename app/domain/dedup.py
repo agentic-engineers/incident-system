@@ -27,7 +27,19 @@ def ingest_incident(session: Session, source: str, title: str, body: str = "") -
         select(Incident).where(Incident.fingerprint == fingerprint)
     ).scalar_one_or_none()
     if existing is not None:
-        session.rollback()  # nada que commitear; libera el advisory lock
+        if existing.status == "done":
+            # Se reabre: la misma alerta volvio a dispararse despues de resuelta.
+            existing.status = "new"
+            existing.reopened = True
+            session.add(
+                AuditEvent(
+                    actor=source, action="incident_reopen", detail=f"fingerprint={fingerprint}"
+                )
+            )
+            session.commit()
+            session.refresh(existing)
+        else:
+            session.rollback()  # nada que commitear; libera el advisory lock
         return existing
 
     # 2. Dejamos rastro de auditoria del ingreso (requerimiento de compliance, 2023).
