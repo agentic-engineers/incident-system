@@ -59,7 +59,7 @@ def count_incidents(session: Session = Depends(get_session)):
 @app.get("/health")
 def health():
     # TODO: esto deberia chequear la DB tambien, pero por ahora con esto basta
-    return {"status": "OK"}
+    return {"status": "ok"}
 
 
 @app.get("/version")
