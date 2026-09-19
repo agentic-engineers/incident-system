@@ -38,7 +38,9 @@ class JsonFormatter(logging.Formatter):
         payload = {
             "timestamp": datetime.datetime.fromtimestamp(
                 record.created, tz=datetime.timezone.utc
-            ).isoformat(),
+            )
+            .isoformat(timespec="milliseconds")
+            .replace("+00:00", "Z"),
             "severity": record.levelname,
             "component": "worker",
             "message": record.getMessage(),
