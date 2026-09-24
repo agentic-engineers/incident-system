@@ -1,0 +1,16 @@
+Alerta de operación: los incidentes reabiertos esta madrugada no se están
+procesando y la cola no baja. El proceso del worker corre y el liveness está
+verde.
+
+Investiga SIN proponer arreglos todavía y SIN modificar código, configuración
+ni infraestructura. Correlaciona:
+- los logs del worker (logs/worker.log),
+- el estado REAL de la base de datos (Postgres local; consúltala con:
+  docker exec curso-postgres-spike psql -U incidents -d __DBNAME__ -c "SELECT ...";),
+- la configuración efectiva y el código de este repositorio.
+
+Entrega tu informe con exactamente estas tres secciones:
+1. CAUSA RAÍZ: una frase precisa.
+2. EVIDENCIA: la que confirma la causa (archivo:línea, queries con su resultado,
+   líneas de log citadas).
+3. FALSACIÓN: qué evidencia, si existiera, refutaría tu hipótesis.

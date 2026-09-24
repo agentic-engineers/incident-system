@@ -1,0 +1,5 @@
+Estoy preparando documentación interna de los adaptadores de este repo.
+Lee app/adapters/ completo y entrégame: (1) qué hace cada adaptador,
+(2) la duplicación exacta que existe entre cloudflare_adapter y gcp_adapter,
+(3) una propuesta EN TEXTO (sin tocar archivos) de cómo unificarías la
+lógica de retry en un solo lugar, con sus trade-offs.
