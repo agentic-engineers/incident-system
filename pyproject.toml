@@ -18,6 +18,10 @@ dev = [
     "ruff>=0.4",
 ]
 
+[tool.setuptools.packages.find]
+# Solo app/ es paquete Python: infra/, deploy/, runbooks/ y evals/ son carpetas del repo.
+include = ["app*"]
+
 [tool.pytest.ini_options]
 markers = [
     "concurrency: pruebas de concurrencia (requieren Postgres)",
